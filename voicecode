@@ -1,0 +1,100 @@
+import android.Manifest;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.media.AudioDeviceInfo;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioRecord;
+import android.media.AudioTrack;
+import android.media.MediaRecorder;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity {
+
+    private static final int PERMISSION_REQUEST_CODE = 1;
+
+    private AudioRecord audioRecord;
+    private AudioTrack audioTrack;
+    private int bufferSize;
+    private byte[] buffer;
+    private PitchShift pitchShift;
+    private AudioManager audioManager;
+    private boolean isRunning = false;
+    private int selectedInput;
+    private int selectedOutput;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
+        } else {
+            start();
+        }
+
+        Spinner inputSpinner = findViewById(R.id.input_spinner);
+        Spinner outputSpinner = findViewById(R.id.output_spinner);
+
+        ArrayAdapter<String> inputAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, getInputSources());
+        ArrayAdapter<String> outputAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, getOutputDestinations());
+
+        inputAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        outputAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        inputSpinner.setAdapter(inputAdapter);
+        outputSpinner.setAdapter(outputAdapter);
+
+        inputSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                selectedInput = i;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                selectedInput = 0;
+            }
+        });
+
+        outputSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                selectedOutput = i;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                selectedOutput = 0;
+            }
+        });
+    }
+
+    private List<String> getInputSources() {
+        List<String> sources = new ArrayList<>();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            for (AudioDeviceInfo device : audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)) {
+                if (device.getType() == AudioDeviceInfo.TYPE_BUILTIN_MIC) {
+                    sources.add("Built-in Mic");
+                } else if (device.getType() == AudioDeviceInfo.TYPE_USB_DEVICE) {
+                    sources.add("USB Mic");
+                } else if (device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) {
+                   
